@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 #include "tic.h"
 #include "ticapi.h"
@@ -63,38 +64,38 @@
 #define PROJECT_SQUIRREL_EXT ".nut"
 #define PROJECT_FENNEL_EXT ".fnl"
 
-#define SHOW_TOOLTIP(FORMAT, ...) 			\
-{ 											\
-	static const char Format[] = FORMAT; 	\
-	char buf[sizeof Format]; 				\
-	sprintf(buf, Format, __VA_ARGS__); 		\
-	showTooltip(buf); 						\
+#define SHOW_TOOLTIP(FORMAT, ...)           \
+{                                           \
+    static const char Format[] = FORMAT;    \
+    static char buf[sizeof Format];         \
+    sprintf(buf, Format, __VA_ARGS__);      \
+    showTooltip(buf);                       \
 }
 
 typedef enum
 {
-	TIC_START_MODE,
-	TIC_CONSOLE_MODE,
-	TIC_RUN_MODE,
-	TIC_CODE_MODE,
-	TIC_SPRITE_MODE,
-	TIC_MAP_MODE,
-	TIC_WORLD_MODE,
-	TIC_SFX_MODE,
-	TIC_MUSIC_MODE,
-	TIC_DIALOG_MODE,
-	TIC_MENU_MODE,
-	TIC_SURF_MODE,
+    TIC_START_MODE,
+    TIC_CONSOLE_MODE,
+    TIC_RUN_MODE,
+    TIC_CODE_MODE,
+    TIC_SPRITE_MODE,
+    TIC_MAP_MODE,
+    TIC_WORLD_MODE,
+    TIC_SFX_MODE,
+    TIC_MUSIC_MODE,
+    TIC_DIALOG_MODE,
+    TIC_MENU_MODE,
+    TIC_SURF_MODE,
 } EditorMode;
 
 typedef struct
 {
-	s32 x, y;
+    s32 x, y;
 } tic_point;
 
 typedef struct
 {
-	s32 x, y, w, h;
+    s32 x, y, w, h;
 } tic_rect;
 
 void setCursor(tic_cursor id);
@@ -117,7 +118,9 @@ void setStudioMode(EditorMode mode);
 void resumeRunMode();
 EditorMode getStudioMode();
 void exitStudio();
-u32 unzip(u8** dest, const u8* source, size_t size);
+
+u32 zip(u8* dest, size_t destSize, const u8* source, size_t size);
+u32 unzip(u8* dest, size_t bufSize, const u8* source, size_t size);
 
 void str2buf(const char* str, s32 size, void* buf, bool flip);
 void toClipboard(const void* data, s32 size, bool flip);
@@ -125,21 +128,21 @@ bool fromClipboard(void* data, s32 size, bool flip, bool remove_white_spaces);
 
 typedef enum
 {
-	TIC_CLIPBOARD_NONE,
-	TIC_CLIPBOARD_CUT,
-	TIC_CLIPBOARD_COPY,
-	TIC_CLIPBOARD_PASTE,
+    TIC_CLIPBOARD_NONE,
+    TIC_CLIPBOARD_CUT,
+    TIC_CLIPBOARD_COPY,
+    TIC_CLIPBOARD_PASTE,
 } ClipboardEvent;
 
 ClipboardEvent getClipboardEvent();
 
 typedef enum
 {
-	TIC_TOOLBAR_CUT,
-	TIC_TOOLBAR_COPY,
-	TIC_TOOLBAR_PASTE,
-	TIC_TOOLBAR_UNDO,
-	TIC_TOOLBAR_REDO,
+    TIC_TOOLBAR_CUT,
+    TIC_TOOLBAR_COPY,
+    TIC_TOOLBAR_PASTE,
+    TIC_TOOLBAR_UNDO,
+    TIC_TOOLBAR_REDO,
 } StudioEvent;
 
 void setStudioEvent(StudioEvent event);
@@ -164,6 +167,7 @@ void gotoCode();
 void gotoSurf();
 void exitFromGameMenu();
 void runProject();
+void drawBGAnimation(tic_mem* tic, s32 ticks);
 
 tic_tiles* getBankTiles();
 tic_palette* getBankPalette();
@@ -177,8 +181,6 @@ bool anyKeyWasPressed();
 const StudioConfig* getConfig();
 System* getSystem();
 
-#if defined(TIC80_PRO)
-
+const char* md5str(const void* data, s32 length);
 bool hasProjectExt(const char* name);
-
-#endif
+void sfx_stop(tic_mem* tic, s32 channel);

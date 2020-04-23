@@ -20,7 +20,7 @@
 // How long to wait before hiding the mouse.
 #define TIC_LIBRETRO_MOUSE_HIDE_TIMER_START 300
 
-static uint32_t *frame_buf;
+static uint32_t *frame_buf = NULL;
 static struct retro_log_callback logging;
 static retro_log_printf_t log_cb;
 static retro_video_refresh_t video_cb;
@@ -195,9 +195,11 @@ void retro_init(void)
  */
 void retro_deinit(void)
 {
-	// Clear out the frame buffer.
-	free(frame_buf);
-	frame_buf = NULL;
+	// Clear out the frame buffer if it exists.
+	if (frame_buf != NULL) {
+		free(frame_buf);
+		frame_buf = NULL;
+	}
 }
 
 /**
@@ -321,7 +323,7 @@ void retro_reset(void)
 {
 	if (tic) {
 		tic80_local* tic80 = (tic80_local*)tic;
-		tic80->memory->api.reset(tic80->memory);
+		tic_api_reset(tic80->memory);
 	}
 }
 
@@ -496,17 +498,17 @@ static void tic80_libretro_mousecursor(tic80_local* game, tic80_mouse* mouse, in
 	// Determine which cursor to draw.
 	switch (state.mouseCursor) {
 		case 1: // Dot
-			game->memory->api.pixel(game->memory, state.input.mouse.x, state.input.mouse.y, 15);
+			tic_api_pix(game->memory, state.input.mouse.x, state.input.mouse.y, 15, false);
 		break;
 		case 2: // Cursor
-			game->memory->api.line(game->memory, state.input.mouse.x - 4, state.input.mouse.y, state.input.mouse.x - 2, state.input.mouse.y, 15);
-			game->memory->api.line(game->memory, state.input.mouse.x + 2, state.input.mouse.y, state.input.mouse.x + 4, state.input.mouse.y, 15);
-			game->memory->api.line(game->memory, state.input.mouse.x, state.input.mouse.y - 4, state.input.mouse.x, state.input.mouse.y - 2, 15);
-			game->memory->api.line(game->memory, state.input.mouse.x, state.input.mouse.y + 2, state.input.mouse.x, state.input.mouse.y + 4, 15);
+			tic_api_line(game->memory, state.input.mouse.x - 4, state.input.mouse.y, state.input.mouse.x - 2, state.input.mouse.y, 15);
+			tic_api_line(game->memory, state.input.mouse.x + 2, state.input.mouse.y, state.input.mouse.x + 4, state.input.mouse.y, 15);
+			tic_api_line(game->memory, state.input.mouse.x, state.input.mouse.y - 4, state.input.mouse.x, state.input.mouse.y - 2, 15);
+			tic_api_line(game->memory, state.input.mouse.x, state.input.mouse.y + 2, state.input.mouse.x, state.input.mouse.y + 4, 15);
 		break;
 		case 3: // Arrow
-			game->memory->api.tri(game->memory, state.input.mouse.x, state.input.mouse.y, state.input.mouse.x + 3, state.input.mouse.y, state.input.mouse.x, state.input.mouse.y + 3, 15);
-			game->memory->api.line(game->memory, state.input.mouse.x + 3, state.input.mouse.y, state.input.mouse.x, state.input.mouse.y + 3, 0);
+			tic_api_tri(game->memory, state.input.mouse.x, state.input.mouse.y, state.input.mouse.x + 3, state.input.mouse.y, state.input.mouse.x, state.input.mouse.y + 3, 15);
+			tic_api_line(game->memory, state.input.mouse.x + 3, state.input.mouse.y, state.input.mouse.x, state.input.mouse.y + 3, 0);
 		break;
 	}
 }

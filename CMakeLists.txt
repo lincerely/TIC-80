@@ -148,11 +148,6 @@ if(MSVC)
 else()
 
     set(CMAKE_C_STANDARD 99)
-
-    if(EMSCRIPTEN)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s USE_SDL=2")
-    endif()
-
 endif()
 
 set(THIRDPARTY_DIR ${CMAKE_SOURCE_DIR}/vendor)
@@ -573,6 +568,7 @@ if(WIN32)
 endif()
 
 set(CMAKE_USE_OPENSSL OFF CACHE BOOL "" )
+set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "")
 set(HTTP_ONLY ON CACHE BOOL "")
 set(BUILD_CURL_EXE OFF CACHE BOOL "")
 set(CURL_CA_BUNDLE "none" CACHE STRING "")
@@ -604,6 +600,13 @@ add_library(zlib STATIC ${ZLIB_SRC})
 target_include_directories(zlib INTERFACE ${THIRDPARTY_DIR}/zlib)
 
 ################################
+# ZIP
+################################
+
+set(CMAKE_DISABLE_TESTING ON CACHE BOOL "" FORCE)
+add_subdirectory(${THIRDPARTY_DIR}/zip)
+
+################################
 # bin2txt
 ################################
 
@@ -621,6 +624,7 @@ if(BUILD_DEMO_CARTS)
 
     list(APPEND DEMO_CARTS 
         ${CMAKE_SOURCE_DIR}/config.tic
+        ${CMAKE_SOURCE_DIR}/build/html/embed.html
     )
 
     set(DEMO_CARTS_OUT)
@@ -684,7 +688,7 @@ target_include_directories(${TIC80_OUTPUT}lib PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${THIRDPARTY_DIR}/curl/include)
 
-target_link_libraries(${TIC80_OUTPUT}lib tic80core zlib libcurl)
+target_link_libraries(${TIC80_OUTPUT}lib tic80core zlib libcurl zip)
 
 if(BUILD_PRO)
     target_compile_definitions(tic80lib PRIVATE TIC80_PRO)
@@ -717,13 +721,6 @@ if(BUILD_SDL)
 
         add_executable(${TIC80_OUTPUT} ${SYSTEM_TYPE} ${TIC80_SRC})
 
-    elseif(APPLE)
-        
-        add_executable(${TIC80_OUTPUT} MACOSX_BUNDLE ${TIC80_SRC} ${CMAKE_SOURCE_DIR}/build/macosx/tic80.icns)
-        set_source_files_properties(${CMAKE_SOURCE_DIR}/build/macosx/tic80.icns PROPERTIES MACOSX_PACKAGE_LOCATION RESOURCES)
-        configure_file("${CMAKE_SOURCE_DIR}/build/macosx/${TIC80_OUTPUT}.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/macosx/${TIC80_OUTPUT}.plist")
-        set_target_properties(${TIC80_OUTPUT} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/macosx/${TIC80_OUTPUT}.plist)
-
     elseif(ANDROID)
 
         set(TIC80_SRC ${TIC80_SRC} ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
@@ -747,7 +744,8 @@ if(BUILD_SDL)
     endif()
 
     if(EMSCRIPTEN)
-        set_target_properties(${TIC80_OUTPUT} PROPERTIES LINK_FLAGS "-s WASM=1 -s USE_SDL=2 -s TOTAL_MEMORY=67108864 --pre-js ${CMAKE_SOURCE_DIR}/build/html/prejs.js")     
+        set_target_properties(${TIC80_OUTPUT} PROPERTIES LINK_FLAGS "-s WASM=1 -s USE_SDL=2 -s TOTAL_MEMORY=67108864 --pre-js ${CMAKE_SOURCE_DIR}/build/html/prejs.js")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s USE_SDL=2")
     elseif(NOT ANDROID)
         target_link_libraries(${TIC80_OUTPUT} SDL2main)
     endif()
@@ -786,16 +784,7 @@ if(BUILD_SOKOL)
 
         set(TIC80_SRC ${TIC80_SRC} build/windows/tic80.rc)
         
-        add_executable(${TIC80_OUTPUT}-sokol WIN32 ${TIC80_SRC})
-
-    elseif(APPLE)
-
-        add_executable(${TIC80_OUTPUT}-sokol MACOSX_BUNDLE ${TIC80_SRC} ${CMAKE_SOURCE_DIR}/build/macosx/tic80.icns)
-    
-        set_source_files_properties(${CMAKE_SOURCE_DIR}/build/macosx/tic80.icns PROPERTIES MACOSX_PACKAGE_LOCATION RESOURCES)
-        configure_file("${CMAKE_SOURCE_DIR}/build/macosx/${TIC80_OUTPUT}-sokol.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/macosx/${TIC80_OUTPUT}-sokol.plist")
-        set_target_properties(${TIC80_OUTPUT}-sokol PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/macosx/${TIC80_OUTPUT}-sokol.plist)
-    
+        add_executable(${TIC80_OUTPUT}-sokol WIN32 ${TIC80_SRC})        
     else()
         add_executable(${TIC80_OUTPUT}-sokol ${TIC80_SRC})
     endif()
