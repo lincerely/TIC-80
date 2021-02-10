@@ -129,8 +129,10 @@ lib/
 *.cmake
 CMakeCache.txt
 Makefile
+!build/rpi/*
 !build/baremetalpi/Makefile
 !build/baremetalpi/boot/Makefile
+!build/baremetalpi/toolchain.cmake
 build/android/.gradle/
 build/android/app/.externalNativeBuild/
 build/android/app/build/
@@ -155,3 +157,15 @@ build/version.h
 build/windows/tic80.rc
 *.ninja
 tic80.sublime-workspace
+build/*.tic
+build/*.vcxproj
+build/*.vcxproj.filters
+build/*.vcxproj.user
+build/CMakeDoxyfile.in
+build/*.sln
+build/.local/
+build/*.dir/
+build/x64/
+build/linux/tic80.desktop
+build/compile_commands.json
+CMakeSettings.json

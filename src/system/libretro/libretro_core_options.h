@@ -7,8 +7,6 @@
 #include "libretro-common/include/libretro.h"
 #include "libretro-common/include/retro_inline.h"
 
-// TODO: Add translations to the core options.
-#define HAVE_NO_LANGEXTRA
 #ifndef HAVE_NO_LANGEXTRA
 #include "libretro_core_options_intl.h"
 #endif
@@ -75,6 +73,26 @@ struct retro_core_option_definition option_defs_us[] = {
       },
       0
    },
+   {
+      "tic80_mouse_hide_delay",
+      "Mouse Cursor Hide Delay",
+      "The number of seconds to wait before the hiding the mouse.",
+      {
+         { "disabled", NULL },
+         { "1",        NULL },
+         { "2",        NULL },
+         { "3",        NULL },
+         { "4",        NULL },
+         { "5",        NULL },
+         { "6",        NULL },
+         { "7",        NULL },
+         { "8",        NULL },
+         { "9",        NULL },
+         { "10",       NULL },
+         { NULL, NULL },
+      },
+      "5"
+   },
    { NULL, NULL, NULL, {{0}}, NULL },
 };
 
@@ -105,6 +123,11 @@ struct retro_core_option_definition *option_defs_intl[RETRO_LANGUAGE_LAST] = {
    NULL,           /* RETRO_LANGUAGE_ARABIC */
    NULL,           /* RETRO_LANGUAGE_GREEK */
    NULL,           /* RETRO_LANGUAGE_TURKISH */
+   NULL,           /* RETRO_LANGUAGE_SLOVAK */
+   NULL,           /* RETRO_LANGUAGE_PERSIAN */
+   NULL,           /* RETRO_LANGUAGE_HEBREW */
+   NULL,           /* RETRO_LANGUAGE_ASTURIAN */
+
 };
 #endif
 
@@ -155,12 +178,11 @@ static INLINE void libretro_set_core_options(retro_environment_t environ_cb)
       char **values_buf                = NULL;
 
       /* Determine number of options */
-      while (true)
+      for (;;)
       {
-         if (option_defs_us[num_options].key)
-            num_options++;
-         else
+         if (!option_defs_us[num_options].key)
             break;
+         num_options++;
       }
 
       /* Allocate arrays */
@@ -187,20 +209,18 @@ static INLINE void libretro_set_core_options(retro_environment_t environ_cb)
             size_t num_values = 0;
 
             /* Determine number of values */
-            while (true)
+            for (;;)
             {
-               if (values[num_values].value)
-               {
-                  /* Check if this is the default value */
-                  if (default_value)
-                     if (strcmp(values[num_values].value, default_value) == 0)
-                        default_index = num_values;
-
-                  buf_len += strlen(values[num_values].value);
-                  num_values++;
-               }
-               else
+               if (!values[num_values].value)
                   break;
+
+               /* Check if this is the default value */
+               if (default_value)
+                  if (strcmp(values[num_values].value, default_value) == 0)
+                     default_index = num_values;
+
+               buf_len += strlen(values[num_values].value);
+               num_values++;
             }
 
             /* Build values string */

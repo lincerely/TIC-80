@@ -56,6 +56,14 @@ static struct TGamePadState gamepad;
 static CSpinLock keyspinlock;
 
 extern "C" {
+
+/*
+unsigned int sleep(unsigned int seconds)
+{
+	mTimer.SimpleMsDelay (seconds*1000);
+}
+*/
+
 static struct
 {
 
@@ -70,7 +78,7 @@ static struct
 
 } platform;
 
-static void setClipboardText(const char* text)
+void tic_sys_clipboard_set(const char* text)
 {
 	if(platform.clipboard)
 	{
@@ -81,59 +89,49 @@ static void setClipboardText(const char* text)
 	platform.clipboard = strdup(text);
 }
 
-static bool hasClipboardText()
+bool tic_sys_clipboard_has()
 {
 	return platform.clipboard != NULL;
 }
 
-static char* getClipboardText()
+char* tic_sys_clipboard_get()
 {
 	return platform.clipboard ? strdup(platform.clipboard) : NULL;
 }
 
-static void freeClipboardText(const char* text)
+void tic_sys_clipboard_free(const char* text)
 {
 	free((void*)text);
 }
 
-static u64 getPerformanceCounter()
+u64 tic_sys_counter_get()
 {
 	return CTimer::Get()->GetTicks();
 }
 
-static u64 getPerformanceFrequency()
+u64 tic_sys_freq_get()
 {
 	return HZ;
 }
 
-static void* httpGetSync(const char* url, s32* size)
-{
-	return NULL;
-}
-
-static void httpGet(const char* url, HttpGetCallback callback, void* calldata)
-{
-	
-}
-
-static void agoFullscreen()
+void tic_sys_fullscreen()
 {
 }
 
-static void showMessageBox(const char* title, const char* message)
+void tic_sys_message(const char* title, const char* message)
 {
 }
 
-static void setWindowTitle(const char* title)
+void tic_sys_title(const char* title)
 {
 }
 
-static void openSystemPath(const char* path)
+void tic_sys_open_path(const char* path)
 {
 
 }
 
-static void preseed()
+void tic_sys_preseed()
 {
 #if defined(__TIC_MACOSX__)
 	srandom(time(NULL));
@@ -144,62 +142,29 @@ static void preseed()
 #endif
 }
 
-static void pollEvent()
+void tic_sys_poll()
 {
 
 }
 
-static void updateConfig()
+void tic_sys_update_config()
 {
 
 }
 
-
-static System systemInterface = 
+bool tic_sys_keyboard_text(char* text)
 {
-	.setClipboardText = setClipboardText,
-	.hasClipboardText = hasClipboardText,
-	.getClipboardText = getClipboardText,
-	.freeClipboardText = freeClipboardText,
-
-	.getPerformanceCounter = getPerformanceCounter,
-	.getPerformanceFrequency = getPerformanceFrequency,
-
-	.httpGetSync = httpGetSync,
-	.httpGet = httpGet,
-
-	.fileDialogLoad = NULL, //file_dialog_load,
-	.fileDialogSave = NULL, //file_dialog_save,
-
-	.goFullscreen = agoFullscreen,
-	.showMessageBox = showMessageBox,
-	.setWindowTitle = setWindowTitle,
-
-	.openSystemPath = openSystemPath,
-	.preseed = preseed,
-	.poll = pollEvent,
-	.updateConfig = updateConfig,
-};
-
-u32 rgbaToBgra(u32 u){
-	u8 r = u & 0xFF;
-	u8 g = (u >> 8) & 0xff;
-	u8 b = (u >> 16) & 0xff;
-	return (b & 0xFF)      
-					| ((g & 0xFF) << 8)
-					| ((r & 0xFF)   << 16)
-					| (0xFF << 24);
+	return false;
 }
 
 void screenCopy(CScreenDevice* screen, u32* ts)
 {
 	u32 pitch = screen->GetPitch();
 	u32* buf = screen->GetBuffer();
-	for (int y = 0; y<136;y++)
-	for (int x = 0; x<240;x++)
+	for (int y = 0; y < TIC80_HEIGHT; y++)
 	{
-		u32 p = ts[(y+4)*(8+240+8)+(x+8)];
-		buf[pitch*y + x] = rgbaToBgra(p);
+		u32 *line = ts + ((y+TIC80_OFFSET_TOP)*(TIC80_FULLWIDTH) + TIC80_OFFSET_LEFT);
+		memcpy(buf + (pitch * y), line, TIC80_WIDTH * 4);
 	}
 
 	// single pixel mouse pointer, disappear after 10 seconds unmoved
@@ -209,14 +174,14 @@ void screenCopy(CScreenDevice* screen, u32* ts)
 		buf[midx]= 0xffffff;
 	}
 
-	// memcpy(screen->GetBuffer(), tic->screen, 240*136*4); would have been too good
+	// memcpy(screen->GetBuffer(), tic->screen, TIC80_WIDTH*TIC80_HEIGHT*4); would have been too good
 }
 
 
 
 } //extern C
 
-void mouseEventHandler (TMouseEvent Event, unsigned nButtons, unsigned nPosX, unsigned nPosY)
+void mouseEventHandler (TMouseEvent Event, unsigned nButtons, unsigned nPosX, unsigned nPosY, int nWheelMove)
 {
 	keyspinlock.Acquire();
 	mousex = nPosX/MOUSE_SENS;
@@ -250,8 +215,8 @@ void inputToTic()
 	if (mousebuttons & 0x01) tic_input->mouse.left = true; else tic_input->mouse.left = false;
 	if (mousebuttons & 0x02) tic_input->mouse.right = true; else tic_input->mouse.right = false;
 	if (mousebuttons & 0x04) tic_input->mouse.middle = true; else tic_input->mouse.middle = false;
-	tic_input->mouse.x = mousex;
-	tic_input->mouse.y = mousey;
+	tic_input->mouse.x = mousex + TIC80_OFFSET_LEFT;
+	tic_input->mouse.y = mousey + TIC80_OFFSET_TOP;
 
 	if( (mousex == mousexOld) && (mousey == mouseyOld) && (mousebuttons == mousebuttonsOld))
 	{
@@ -311,7 +276,7 @@ void inputToTic()
 	if (gamepad.buttons & 0x400) tic_input->gamepads.first.x = true;
 	if (gamepad.buttons & 0x800) tic_input->gamepads.first.y = true;
 	// map ESC to a gamepad button to exit the game
-	if (gamepad.buttons & 0x1000) tic_input->keyboard.keys[keynum++]= tic_key_escape;
+	if (gamepad.buttons & 0x10) tic_input->keyboard.keys[keynum++]= tic_key_escape;
 
 	// TODO use min and max instead of hardcoded range
 	if (gamepad.naxes > 0)
@@ -395,7 +360,7 @@ TShutdownMode Run(void)
 	//teststat("no.txt");
 	//teststat("carts");
 
-	//testmkdir("/slash");
+	testmkdir("tic80");
 	//CTimer::SimpleMsDelay(5000);
 
 	// ok testmkdir("primo");
@@ -405,24 +370,31 @@ TShutdownMode Run(void)
 	// ko testmkdir("quinto/");
 	// ok testmkdir("sesto bis");
 
-
 	dbg("Calling studio init instance..\n");
 
 	if (pKeyboard)
 	{
 		dbg("With keyboard\n");
-		platform.studio = studioInit(0, NULL, 44100, "tic80/", &systemInterface);
+		malloc(77);
+		char  arg0[] = "xxkernel";
+		const char* argv[] = { &arg0[0], NULL };
+		int argc = 1;
+		malloc(88);
+		platform.studio = studioInit(argc, argv, 44100, "tic80");
+		malloc(99);
+
 	}
 	else
 	{
 		//  if no keyboard, start in surf mode!
 		char  arg0[] = "xxkernel";
-		char  arg1[] = "-surf";
-		char* argv[] = { &arg0[0], &arg1[0], NULL };
+		char  arg1[] = "--cmd=surf";
+		const char* argv[] = { &arg0[0], &arg1[0], NULL };
 		int argc = 2;
 		dbg("Without keyboard\n");
-		platform.studio = studioInit(argc, argv, 44100, "tic80/", &systemInterface);
+		platform.studio = studioInit(argc, argv, 44100, "tic80");
 	}
+	dbg("studioInit OK\n");
 
 	if( !platform.studio)
 	{
@@ -430,7 +402,7 @@ TShutdownMode Run(void)
 	}
 
 	// gotoSurf();
-
+	platform.studio->tic->screen_format = TIC80_PIXEL_COLOR_BGRA8888;
 	dbg("Studio init ok..\n");
 
 	if (pKeyboard){

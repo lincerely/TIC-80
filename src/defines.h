@@ -26,3 +26,9 @@
 #define STATIC_ASSERT(name, condition) typedef char static_assert_dummy_ ## name[(condition) ? 1 : -1]
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
+#define CLAMP(v,a,b) (MIN(MAX(v,a),b))
+#define SWAP(a, b, type) do { type temp = a; a = b; b = temp; } while (0)
+#define ZEROMEM(p) memset(&p, 0, sizeof p)
+#define OBJCOPY(...) memcpy(malloc(sizeof __VA_ARGS__), &__VA_ARGS__, sizeof __VA_ARGS__)
+#define DEF2STR2(x) #x
+#define DEF2STR(x) DEF2STR2(x)

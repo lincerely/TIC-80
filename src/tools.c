@@ -23,9 +23,17 @@
 #include "tools.h"
 
 #include <string.h>
+#include <stdlib.h>
+#include <zlib.h>
 
 extern void tic_tool_poke4(void* addr, u32 index, u8 value);
 extern u8 tic_tool_peek4(const void* addr, u32 index);
+extern void tic_tool_poke2(void* addr, u32 index, u8 value);
+extern u8 tic_tool_peek2(const void* addr, u32 index);
+extern void tic_tool_poke1(void* addr, u32 index, u8 value);
+extern u8 tic_tool_peek1(const void* addr, u32 index);
+
+extern s32 tic_tool_sfx_pos(s32 speed, s32 ticks);
 
 s32 tic_tool_get_pattern_id(const tic_track* track, s32 frame, s32 channel)
 {
@@ -85,7 +93,7 @@ u32 tic_tool_find_closest_color(const tic_rgb* palette, const gif_color* color)
     return closetColor;
 }
 
-u32* tic_tool_palette_blit(const tic_palette* srcpal)
+u32* tic_tool_palette_blit(const tic_palette* srcpal, tic80_pixel_color_format fmt)
 {
     static u32 pal[TIC_PALETTE_SIZE];
 
@@ -95,10 +103,32 @@ u32* tic_tool_palette_blit(const tic_palette* srcpal)
 
     while(src != end)
     {
-        *dst++ = src->r;
-        *dst++ = src->g;
-        *dst++ = src->b;
-        *dst++ = 0xff;
+        switch(fmt){
+            case TIC80_PIXEL_COLOR_BGRA8888:
+                *dst++ = src->b;
+                *dst++ = src->g;
+                *dst++ = src->r;
+                *dst++ = 0xff;
+                break;
+            case TIC80_PIXEL_COLOR_RGBA8888:
+                *dst++ = src->r;
+                *dst++ = src->g;
+                *dst++ = src->b;
+                *dst++ = 0xff;
+                break;
+            case TIC80_PIXEL_COLOR_ABGR8888:
+                *dst++ = 0xff;
+                *dst++ = src->b;
+                *dst++ = src->g;
+                *dst++ = src->r;
+                break;
+            case TIC80_PIXEL_COLOR_ARGB8888:
+                *dst++ = 0xff;
+                *dst++ = src->r;
+                *dst++ = src->g;
+                *dst++ = src->b;
+                break;
+        }
         src++;
     }
 
@@ -117,6 +147,51 @@ s32 tic_tool_get_track_row_sfx(const tic_track_row* row)
 
 void tic_tool_set_track_row_sfx(tic_track_row* row, s32 sfx)
 {
+    if(sfx >= SFX_COUNT) sfx = SFX_COUNT-1;        
+
     row->sfxhi = (sfx & 0b00100000) >> MUSIC_SFXID_LOW_BITS;
     row->sfxlow = sfx & 0b00011111;
+}
+
+bool tic_tool_is_noise(const tic_waveform* wave)
+{
+    for(s32 i = 0; i < WAVE_SIZE; i++)
+        if(wave->data[i])
+            return false;
+
+    return true;
+}
+
+void tic_tool_str2buf(const char* str, s32 size, void* buf, bool flip)
+{
+    char val[] = "0x00";
+    const char* ptr = str;
+
+    for(s32 i = 0; i < size/2; i++)
+    {
+        if(flip)
+        {
+            val[3] = *ptr++;
+            val[2] = *ptr++;
+        }
+        else
+        {
+            val[2] = *ptr++;
+            val[3] = *ptr++;
+        }
+
+        ((u8*)buf)[i] = (u8)strtol(val, NULL, 16);
+    }
+}
+
+u32 tic_tool_zip(void* dest, s32 destSize, const void* source, s32 size)
+{
+    unsigned long destSizeLong = destSize;
+    return compress2(dest, &destSizeLong, source, size, Z_BEST_COMPRESSION) == Z_OK ? destSizeLong : 0;
+}
+
+u32 tic_tool_unzip(void* dest, s32 destSize, const void* source, s32 size)
+{
+    unsigned long destSizeLong = destSize;
+    return uncompress(dest, &destSizeLong, source, size) == Z_OK ? destSizeLong : 0;
 }
